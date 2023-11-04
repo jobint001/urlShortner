@@ -1,23 +1,48 @@
 const express = require('express');
-const mongoose = require('mongoose')
-const shorturl = require('./models/shorturl')
+const mongoose = require('mongoose');
+const ShortUrl = require('./models/shorturl');
 const app = express();
 
-mongoose.connect('mongodb://localhost/urlShortner',{
-    useNewUrlParser:true,useUnifiedTopology:true
-})
-app.use(express.urlencoded({ extended:false}))
-app.set("view engine","ejs");
+mongoose.connect('mongodb://localhost/urlShortener', {
+  useNewUrlParser: true, useUnifiedTopology: true,
+});
 
-app.get('/',async (req,res)=>{
-    const shortUrls= await shorturl.find()
-    res.render('index',{shortUrls:shortUrls})
-    
-})
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: false }));
 
-app.post('/shorturls', async (req,res)=>{
-   await shorturl.create({full:req.body.fullurl})
-   res.redirect('/')
+app.get('/', async (req, res) => {
+  try {
+    const shortUrls = await ShortUrl.find();
+    res.render('index', { shortUrls: shortUrls });
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500); // Handle the error gracefully
+  }
+});
 
-})
-app.listen(process.env.PORT||5000)
+app.post('/shortUrls', async (req, res) => {
+  try {
+    await ShortUrl.create({ full: req.body.fullUrl });
+    res.redirect('/');
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500); // Handle the error gracefully
+  }
+});
+
+app.get('/:shortUrl', async (req, res) => {
+  try {
+    const shortUrl = await ShortUrl.findOne({ short: req.params.shortUrl });
+    if (shortUrl == null) return res.sendStatus(404);
+
+    shortUrl.clicks++;
+    await shortUrl.save();
+
+    res.redirect(shortUrl.full);
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500); // Handle the error gracefully
+  }
+});
+
+app.listen(process.env.PORT || 5000);
